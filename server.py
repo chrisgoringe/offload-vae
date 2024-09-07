@@ -35,12 +35,7 @@ async def decode(websocket):
     message:bytes
     async for message in websocket:
         batch:torch.Tensor = pickle.loads(message)
-        i = decoder.model.decode(batch.cuda(), return_dict=False).cpu()
-        #images:list[torch.Tensor] = []
-        #for latent in batch:
-        #    print(latent.shape)
-        #    images.append( decoder.model.decode(latent.cuda(), return_dict=False) )
-        #i = torch.stack(images)
+        i = decoder.model.decode(batch.cuda(), return_dict=False)[0].cpu()
         await websocket.send(pickle.dumps(i))
 
 async def main():
