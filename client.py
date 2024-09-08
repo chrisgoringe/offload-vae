@@ -1,9 +1,10 @@
-import torch
 import requests
-import numpy as np
+from tensor_rep import TensorRep
     
 class RemoteVae:
     category = "experimental"
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "func"
     @classmethod
     def INPUT_TYPES(s):
         return {"required": {
@@ -11,11 +12,8 @@ class RemoteVae:
                     "server": ("STRING", {"default":"https://192.168.0.119:8188"}),
                 }}
 
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "func"
-
     def func(self, latent, server):
-        payload = { "latent" : latent['samples'].numpy().toarray() }
-        r = requests.get(server+"/decode_latent", json=payload)
-        image = torch.from_numpy( np.array(r['image']) )
+        payload = TensorRep.tensor_to_dict(latent['samples'])
+        r       = requests.get(server+"/decode_latent", json=payload).json()
+        image   = TensorRep.dict_to_tensor(r)
         return (image,)

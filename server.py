@@ -1,10 +1,8 @@
-
 import torch
-import numpy as np
-
 from server import PromptServer
 from aiohttp import web
 import time
+from tensor_rep import TensorRep
 
 routes = PromptServer.instance.routes
 @routes.post('/decode_latent')
@@ -37,7 +35,7 @@ class RemoteVaeServer:
     
     @classmethod
     def decode(cls, dict):
-        latent_samples = torch.from_numpy( np.array( dict['latent' ]) )
+        latent_samples = TensorRep.dict_to_tensor(dict)
         image:torch.Tensor = cls.vae.decode(latent_samples.cuda()).cpu()
         cls.called = True
-        return image.numpy().tolist()
+        return TensorRep.tensor_to_dict(image)
