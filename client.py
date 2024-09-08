@@ -1,10 +1,13 @@
 import torch, pickle
 from websockets.sync.client import connect
+import numpy as np
 
 def decode(t:torch.Tensor, server):
-    with connect(server) as websocket:
-        b = pickle.dumps(t)
-        websocket.send(b)
+    with connect(server, max_size=2**30) as websocket:
+        websocket.send("V".encode())
+        websocket.send(t.shape)
+        websocket.send(t.numpy().astype(np.float32).to_bytes())
+
         response = websocket.recv()
         return pickle.loads(response)
     
