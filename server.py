@@ -42,6 +42,10 @@ class RemoteVaeServer:
             "required": { 
                 "vae": ("VAE", {"tooltip": "The VAE model used for decoding the latent."}),
             }}
+    
+    @classmethod
+    def IS_CHANGED(self, vae):
+        return float("NaN")
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "func"
