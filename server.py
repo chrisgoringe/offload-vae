@@ -1,45 +1,40 @@
 import torch
 from server import PromptServer
 from aiohttp import web
-import time
-from .tensor_rep import TensorRep
+from .transformations import load_tensor_from_file, tensor_to_bytes
 
 routes = PromptServer.instance.routes
 @routes.post('/decode_latent')
 async def my_function(request):
     the_data = await request.post()
-    #return web.json_response({"image":RemoteVaeServer.decode(the_data)})
-    return web.Response(body = RemoteVaeServer.decode(the_data))
+    if RemoteVaeServer.vae_laoded is not None:
+        return web.Response(body = decode(the_data))
+    else:
+        return web.HTTPServerError(text="Server not running")
 
+def decode(dict) -> bytes:
+    f = dict['file']
+    latent_samples = load_tensor_from_file(f.file)
+    with torch.no_grad():
+        image:torch.Tensor = RemoteVaeServer.vae_laoded.decode(latent_samples.cuda()).cpu()
+    return tensor_to_bytes(image)
 
 class RemoteVaeServer:
-    vae     = None
-    called  = False
+    vae_laoded = None
 
-    category = "experimental"
+    CATEGORY = "remote_offload"
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": { 
                 "vae": ("VAE", {"tooltip": "The VAE model used for decoding the latent."}),
+                "mode": (["start", "stop"],)
             }}
 
     RETURN_TYPES = ()
     FUNCTION = "func"
-    OUTPUT_NODE = True
 
-    def func(self, vae):
-        RemoteVaeServer.vae = vae
-        RemoteVaeServer.called = False 
-        while not RemoteVaeServer.called: time.sleep(10)
+    def func(self, vae, mode):
+        RemoteVaeServer.vae_laoded = vae if mode=="start" else None
         return ()
     
-    @classmethod
-    def decode(cls, dict) -> bytes:
-        f = dict['file']
-        latent_samples = TensorRep.load_tensor_from_file(f.file)
-        with torch.no_grad():
-            image:torch.Tensor = cls.vae.decode(latent_samples.cuda()).cpu()
-        cls.called = True
-        #return TensorRep.tensor_to_dict(image)
-        return TensorRep.to_bytes(image)

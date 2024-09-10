@@ -1,23 +1,22 @@
 import requests
 import tempfile
-from .tensor_rep import TensorRep
+from .transformations import save_tensor_in_file, bytes_to_tensor
     
 class RemoteVae:
-    category = "experimental"
+    CATEGORY = "remote_offload"
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "func"
     @classmethod
     def INPUT_TYPES(s):
         return {"required": {
                     "latent": ("LATENT",),
-                    "server": ("STRING", {"default":"https://192.168.0.119:8188"}),
+                    "server": ("STRING", {"default":"https://127.0.0.1:8188"}),
                 }}
 
     def func(self, latent, server):
         with tempfile.TemporaryFile(mode='b+a') as fp:
-            TensorRep.save_tensor_in_file(latent['samples'], fp)
+            save_tensor_in_file(latent['samples'], fp)
             fp.seek(0)
             r = requests.post(server+"/decode_latent", files={'file': fp})
-        #image = TensorRep.dict_to_tensor(r.json()['image'])
-        image = TensorRep.from_bytes(r.content)
+        image = bytes_to_tensor(r.content)
         return (image,)
