@@ -1,5 +1,7 @@
 import requests
-from tensor_rep import TensorRep
+import json
+import tempfile
+from .tensor_rep import TensorRep
     
 class RemoteVae:
     category = "experimental"
@@ -13,7 +15,10 @@ class RemoteVae:
                 }}
 
     def func(self, latent, server):
-        payload = TensorRep.tensor_to_dict(latent['samples'])
-        r       = requests.get(server+"/decode_latent", json=payload).json()
-        image   = TensorRep.dict_to_tensor(r)
+        with tempfile.TemporaryFile(mode='+a') as fp:
+            fp.write(TensorRep.tensor_to_str(latent['samples']))
+            fp.seek(0)
+            files = {'file': fp}
+            r       = requests.post(server+"/decode_latent", files=files)
+        image   = TensorRep.dict_to_tensor(r.json()['image'])
         return (image,)
