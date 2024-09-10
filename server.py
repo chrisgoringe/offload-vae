@@ -7,7 +7,7 @@ routes = PromptServer.instance.routes
 @routes.post('/decode_latent')
 async def my_function(request):
     the_data = await request.post()
-    if RemoteVaeServer.vae_laoded is not None:
+    if RemoteVaeServer.vae_loaded is not None:
         return web.Response(body = decode(the_data))
     else:
         return web.HTTPServerError(text="Server not running")
@@ -16,11 +16,11 @@ def decode(dict) -> bytes:
     f = dict['file']
     latent_samples = load_tensor_from_file(f.file)
     with torch.no_grad():
-        image:torch.Tensor = RemoteVaeServer.vae_laoded.decode(latent_samples.cuda()).cpu()
+        image:torch.Tensor = RemoteVaeServer.vae_loaded.decode(latent_samples.cuda()).cpu()
     return tensor_to_bytes(image)
 
 class RemoteVaeServer:
-    vae_laoded = None
+    vae_loaded = None
 
     CATEGORY = "remote_offload"
     @classmethod
@@ -33,8 +33,10 @@ class RemoteVaeServer:
 
     RETURN_TYPES = ()
     FUNCTION = "func"
+    OUTPUT_NODE = True
 
     def func(self, vae, mode):
-        RemoteVaeServer.vae_laoded = vae if mode=="start" else None
+        RemoteVaeServer.vae_loaded = vae if mode=="start" else None
+        print("Server running" if RemoteVaeServer.vae_loaded is not None else "Server not running")
         return ()
     
