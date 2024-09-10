@@ -14,7 +14,7 @@ class RemoteVae:
                 }}
 
     def func(self, latent, server):
-        with tempfile.TemporaryFile(mode='+a') as fp:
+        with tempfile.TemporaryFile(mode='b+a') as fp:
             TensorRep.save_tensor_in_file(latent['samples'], fp)
             fp.seek(0)
             r = requests.post(server+"/decode_latent", files={'file': fp})

@@ -28,7 +28,7 @@ class TensorRep:
     
     @classmethod
     def to_bytes(cls, tensor:torch.Tensor) -> bytes:
-        return save({"tensor":tensor})
+        return save({"tensor":tensor.contiguous()})
     
     @classmethod
     def from_bytes(cls, data:bytes) -> torch.Tensor:
