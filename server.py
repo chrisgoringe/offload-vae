@@ -2,6 +2,7 @@ import torch
 from server import PromptServer
 from aiohttp import web
 from .transformations import load_tensor_from_file, tensor_to_bytes
+import time
 
 routes = PromptServer.instance.routes
 @routes.post('/decode_latent')
@@ -16,11 +17,12 @@ def decode(dict) -> bytes:
     f = dict['file']
     latent_samples = load_tensor_from_file(f.file)
     with torch.no_grad():
-        image:torch.Tensor = RemoteVaeServer.vae_loaded.decode(latent_samples.cuda()).cpu()
-    return tensor_to_bytes(image)
+        RemoteVaeServer.image_returned = RemoteVaeServer.vae_loaded.decode(latent_samples.cuda()).cpu()
+    return tensor_to_bytes(RemoteVaeServer.image_returned)
 
 class RemoteVaeServer:
-    vae_loaded = None
+    vae_loaded                  = None
+    image_returned:torch.Tensor = None
 
     CATEGORY = "remote_offload"
     @classmethod
@@ -28,15 +30,15 @@ class RemoteVaeServer:
         return {
             "required": { 
                 "vae": ("VAE", {"tooltip": "The VAE model used for decoding the latent."}),
-                "mode": (["start", "stop"],)
             }}
 
-    RETURN_TYPES = ()
+    RETURN_TYPES = ("IMAGE",)
     FUNCTION = "func"
     OUTPUT_NODE = True
 
-    def func(self, vae, mode):
-        RemoteVaeServer.vae_loaded = vae if mode=="start" else None
-        print("Server running" if RemoteVaeServer.vae_loaded is not None else "Server not running")
-        return ()
+    def func(self, vae):
+        RemoteVaeServer.vae_loaded     = vae
+        RemoteVaeServer.image_returned = None
+        while RemoteVaeServer.image_returned is None: time.sleep(5)
+        return (RemoteVaeServer.image_returned, )
     
