@@ -1,6 +1,13 @@
 import torch
 import numpy as np
 import json
+from safetensors.torch import save, load
+
+'''
+A dict is used for the response, a filehandle for the send
+'''
+
+SAFETENSORS = True
 
 class TensorRep:
     @classmethod
@@ -18,3 +25,26 @@ class TensorRep:
     @classmethod
     def tensor_to_str(cls, tensor:torch.Tensor) -> str:
         return json.dumps(cls.tensor_to_dict(tensor))
+    
+    @classmethod
+    def to_bytes(cls, tensor:torch.Tensor) -> bytes:
+        return save({"tensor":tensor})
+    
+    @classmethod
+    def from_bytes(cls, data:bytes) -> torch.Tensor:
+        return load(data)['tensor']
+    
+    @classmethod
+    def save_tensor_in_file(cls, tensor:torch.Tensor, file_handle):
+        if SAFETENSORS:
+            file_handle.write(cls.to_bytes(tensor))
+        else:
+            file_handle.write(TensorRep.tensor_to_str(tensor))
+
+    @classmethod
+    def load_tensor_from_file(cls, file_handle) -> torch.Tensor:
+        if SAFETENSORS:
+            return load(file_handle.read())['tensor']
+        else:
+            return TensorRep.dict_to_tensor(json.loads(file_handle.read()))
+    

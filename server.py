@@ -3,13 +3,13 @@ from server import PromptServer
 from aiohttp import web
 import time
 from .tensor_rep import TensorRep
-import json
 
 routes = PromptServer.instance.routes
 @routes.post('/decode_latent')
 async def my_function(request):
     the_data = await request.post()
-    return web.json_response({"image":RemoteVaeServer.decode(the_data)})
+    #return web.json_response({"image":RemoteVaeServer.decode(the_data)})
+    return web.Response(body = RemoteVaeServer.decode(the_data))
 
 
 class RemoteVaeServer:
@@ -35,10 +35,11 @@ class RemoteVaeServer:
         return ()
     
     @classmethod
-    def decode(cls, dict):
+    def decode(cls, dict) -> bytes:
         f = dict['file']
-        latent_samples = TensorRep.dict_to_tensor(json.loads(f.file.read()))
+        latent_samples = TensorRep.load_tensor_from_file(f.file)
         with torch.no_grad():
             image:torch.Tensor = cls.vae.decode(latent_samples.cuda()).cpu()
         cls.called = True
-        return TensorRep.tensor_to_dict(image)
+        #return TensorRep.tensor_to_dict(image)
+        return TensorRep.to_bytes(image)

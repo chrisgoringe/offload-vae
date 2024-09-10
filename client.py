@@ -1,5 +1,4 @@
 import requests
-import json
 import tempfile
 from .tensor_rep import TensorRep
     
@@ -16,9 +15,9 @@ class RemoteVae:
 
     def func(self, latent, server):
         with tempfile.TemporaryFile(mode='+a') as fp:
-            fp.write(TensorRep.tensor_to_str(latent['samples']))
+            TensorRep.save_tensor_in_file(latent['samples'], fp)
             fp.seek(0)
-            files = {'file': fp}
-            r       = requests.post(server+"/decode_latent", files=files)
-        image   = TensorRep.dict_to_tensor(r.json()['image'])
+            r = requests.post(server+"/decode_latent", files={'file': fp})
+        #image = TensorRep.dict_to_tensor(r.json()['image'])
+        image = TensorRep.from_bytes(r.content)
         return (image,)
