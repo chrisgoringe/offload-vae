@@ -14,8 +14,8 @@ async def my_function(request):
     the_data = await request.post()
     if RemoteVaeServer.vae_loaded is not None:
         try:
-            latent_samples = RemoteVaeServer.get_samples(the_data)
-            return web.Response(body = RemoteVaeServer.decode(latent_samples))
+            RemoteVaeServer.get_samples(the_data)
+            return web.Response(body = RemoteVaeServer.decode())
         except VaeMismatch:
             return web.HTTPServerError(text=str(sys.exception()))
     else:
@@ -26,8 +26,8 @@ async def my_function(request):
     the_data = await request.post()
     if RemoteVaeServer.vae_loaded is not None:
         try:
-            latent_samples = RemoteVaeServer.get_samples(the_data)
-            threading.Thread(target=RemoteVaeServer.decode, args=(RemoteVaeServer,latent_samples,)).start()
+            RemoteVaeServer.get_samples(the_data)
+            threading.Thread(target=RemoteVaeServer.decode, args=(RemoteVaeServer,)).start()
         except VaeMismatch:
             return web.HTTPServerError(text=str(sys.exception()))
         return web.HTTPOk()
@@ -37,6 +37,7 @@ async def my_function(request):
 class RemoteVaeServer:
     vae_loaded:VAE              = None
     image_returned:torch.Tensor = None
+    latent_samples:torch.Tensor = None
 
     CATEGORY = "remote_offload"
     @classmethod
@@ -50,7 +51,7 @@ class RemoteVaeServer:
     def IS_CHANGED(self, vae):
         return float("NaN")
 
-    RETURN_TYPES = ("IMAGE",)
+    RETURN_TYPES = ("LATENT", "IMAGE",)
     FUNCTION = "func"
     OUTPUT_NODE = True
 
@@ -58,7 +59,7 @@ class RemoteVaeServer:
         RemoteVaeServer.vae_loaded     = vae
         RemoteVaeServer.image_returned = None
         while RemoteVaeServer.image_returned is None: time.sleep(5)
-        return (RemoteVaeServer.image_returned, )
+        return ( {'samples':RemoteVaeServer.latent_samples}, RemoteVaeServer.image_returned, )
     
     @classmethod
     def get_samples(cls, the_dict) -> torch.Tensor:
@@ -67,11 +68,11 @@ class RemoteVaeServer:
         B, C, W, H = latent_samples.shape
         if cls.vae_loaded.latent_channels != C:
             raise VaeMismatch(f"Server has a {cls.vae_loaded.latent_channels} channel VAE loaded, a {C} channel latent was sent.")
-        return latent_samples
+        cls.latent_samples = latent_samples
 
     @classmethod
-    def decode(cls,latent_samples) -> bytes:
+    def decode(cls) -> bytes:
         with torch.no_grad():
-            cls.image_returned = cls.vae_loaded.decode(latent_samples.cuda()).cpu()
+            cls.image_returned = cls.vae_loaded.decode(cls.latent_samples.cuda()).cpu()
         return tensor_to_bytes(cls.image_returned)
         
