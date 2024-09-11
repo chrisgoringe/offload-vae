@@ -5,7 +5,7 @@ from .save_promise import SavePromise
 NODE_CLASS_MAPPINGS = {
     "Remote Vae" : RemoteVae,
     "Remote Vae Server" : RemoteVaeServer,
-    "Save Promised Imaged" : SavePromise,
+    "Save Promised Image" : SavePromise,
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS',]

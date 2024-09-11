@@ -19,5 +19,5 @@ class SavePromise(SaveImage):
         def save_later():
             image = asyncio.run(promised_image)
             self.save_images(images=image, **kwargs)
-        threading.Thread(target=save_later).start()
+        threading.Thread(target=save_later, daemon=True).start()
         return ()
