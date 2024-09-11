@@ -4,7 +4,7 @@ from .transformations import save_tensor_in_file, bytes_to_tensor
     
 class RemoteVae:
     CATEGORY = "remote_offload"
-    RETURN_TYPES = ("IMAGE",)
+    RETURN_TYPES = ("IMAGE","PROMISE",)
     FUNCTION = "func"
     OUTPUT_NODE = True
     @classmethod
@@ -22,12 +22,12 @@ class RemoteVae:
             if mode=="wait":
                 r = requests.post(server+"/decode_latent", files={'file': fp})
                 image = bytes_to_tensor(r.content)
-                return (image,)
+                return (image,None,)
             elif mode=="forget":
                 r = requests.post(server+"/decode_latent_noreply", files={'file': fp})
-                return (None,)
+                return (None,None,)
             elif mode=="async":
                 async def get_image():
                     r = requests.post(server+"/decode_latent", files={'file': fp})
                     return bytes_to_tensor(r.content)
-                return (get_image(),)     
+                return (None,get_image(),)     
