@@ -13,3 +13,8 @@ def save_tensor_in_file(tensor:torch.Tensor, file_handle):
 def load_tensor_from_file(file_handle) -> torch.Tensor:
     return bytes_to_tensor (file_handle.read())
 
+latent_route_name = '/send_latent'
+no_reply = '_noreply'
+
+# IMAGE_REQUEST has type Queue
+# PROMISE has type awaitable

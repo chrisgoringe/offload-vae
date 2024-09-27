@@ -1,11 +1,12 @@
-from .client import RemoteVae
-from .server import RemoteVaeServer
-from .save_promise import SavePromise
+from .client import SendLatent, SaveAsyncImage
+from .server import LatentServer, ImageResponse
 
 NODE_CLASS_MAPPINGS = {
-    "Remote Vae" : RemoteVae,
-    "Remote Vae Server" : RemoteVaeServer,
-    "Save Promised Image" : SavePromise,
+    "Send Latent to Server" : SendLatent,
+    "Save Async Image" : SaveAsyncImage,
+
+    "Latent Server" : LatentServer,
+    "Image Response" : ImageResponse,
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS',]
