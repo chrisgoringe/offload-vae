@@ -2,7 +2,7 @@ import requests
 import tempfile
 from .shared import save_tensor_in_file, bytes_to_tensor, latent_route_name, no_reply
 from nodes import SaveImage
-import asyncio, threading
+import asyncio, threading, queue
 
 def check_ok(r:requests.Response):
     if r.status_code!=200: raise Exception(f"Call to {r.url} failed: {r.reason}")
@@ -25,7 +25,9 @@ class SendLatent:
             with tempfile.TemporaryFile(mode='b+a') as fp:
                 save_tensor_in_file(l['samples'], fp)
                 fp.seek(0)
-                r = requests.post(server+latent_route_name+(no_reply if forget else ""), files={'file': fp})
+                url = server+latent_route_name+(no_reply if forget else "")
+                print(f"Post to {url }")
+                r = requests.post(url, files={'file': fp}, verify=False)
                 check_ok(r)
                 return bytes_to_tensor(r.content) if not forget else None
         if forget:
@@ -33,7 +35,8 @@ class SendLatent:
             return (None,)
         else:
             return (get_reponse(latent),)  
-        
+ 
+    
 class SaveAsyncImage(SaveImage):
     CATEGORY = "remote_offload"
     RETURN_TYPES = ()
@@ -42,15 +45,19 @@ class SaveAsyncImage(SaveImage):
     @classmethod
     def INPUT_TYPES(s):
         it = SaveImage.INPUT_TYPES()
-        required = {"async_image": ("ASYNC_IMAGE", {"tooltip": "The output from LatentClient"})}
+        required = {"async_image": ("ASYNC_IMAGE", {"tooltip": "The output from LatentClient"}), "wait": ("BOOLEAN",{"default":False})}
         for key in it['required']: 
             if key!='images': required[key] = it['required'][key]
         it['required'] = required
         return it
 
-    def func(self, promised_image, **kwargs):
-        def save_later():
-            image = asyncio.run(promised_image)
-            self.save_images(images=image, **kwargs)
-        threading.Thread(target=save_later, daemon=True).start()
-        return ()
+    def func(self, async_image, wait, **kwargs):
+        def save_later(q:queue.Queue):
+            image = asyncio.run(async_image)
+            result = self.save_images(images=image, **kwargs)
+            if q: q.put(result)
+        q = queue.SimpleQueue() if wait else None
+        threading.Thread(target=save_later, args=[q,], daemon=True).start()
+        return q.get() if wait else {}
+
+    

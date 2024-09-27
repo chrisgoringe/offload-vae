@@ -31,17 +31,17 @@ class Dispatcher:
     server_queues:dict[type,queue.Queue] = {}
     @classmethod
     def dispatch_to_server(cls, clazz:type, message:dict, no_reply=False) -> queue.Queue:
-        if (q := cls.server_queues.get(clazz, None)) is None:
+        if (q := cls.server_queues.get(clazz.__name__, None)) is None:
             return None
         else:
             reply_q = NopQueue() if no_reply else queue.SimpleQueue()
             q.put((message, reply_q))
-            return q
+            return reply_q
     
     @classmethod
     def ready(cls, clazz:type) -> queue.Queue:
-        cls.server_queues[clazz] = queue.SimpleQueue()
-        return cls.server_queues[id]
+        cls.server_queues[clazz.__name__] = queue.SimpleQueue()
+        return cls.server_queues[clazz.__name__]
     
     @classmethod
     def done(cls, clazz:type) -> None: 
@@ -53,12 +53,13 @@ async def _dispatch(clazz, request, no_reply=False):
     Deal with a request that shiould be sent to the specified clazz of server
     '''
     the_data = await request.post()
-    reply_queue:queue.Queue = Dispatcher.dispatch_to_server(clazz=clazz, dict=the_data, no_reply=no_reply)
+    reply_queue:queue.Queue = Dispatcher.dispatch_to_server(clazz=clazz, message=the_data, no_reply=no_reply)
     if reply_queue:
         if no_reply: 
             return web.HTTPOk()
         else:
-            return web.Response(body = reply_queue.get())
+            response = reply_queue.get()
+            return web.Response(body = response)
     else:
         return web.HTTPServerError(text="Server not running")
 
@@ -69,11 +70,11 @@ Create two routes for latent (/send_latent and /send_latent_noreply) which will 
 '''
 @routes.post(latent_route_name)
 async def dispatch(request, no_reply=False):
-    return _dispatch(LatentServer, request, no_reply)
+    return await _dispatch(LatentServer, request, no_reply)
 
 @routes.post(latent_route_name+no_reply)
 async def dispatch_noreply(request):
-    return dispatch(request, no_reply=True)
+    return await dispatch(request, no_reply=True)
     
 class LatentServer(Server):
     '''
@@ -95,7 +96,7 @@ class LatentServer(Server):
     FUNCTION = "func"
 
     def func(self):
-        q = Dispatcher.ready(self)
+        q = Dispatcher.ready(self.__class__)
         try:
             message, reply_queue = q.get()
             latent_samples = load_tensor_from_file(message['file'].file)
